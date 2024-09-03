@@ -76,7 +76,7 @@ def secondcarry(carryval, signal, power_bit_array):
     carryval = jnp.floor_divide(val, power_bit)
     return carryval, jnp.mod(val, power_bit)
   carryval, vals = lax.scan(body, carryval, (signal, power_bit_array))
-
+  print(carryval)
   return vals
 
 def partial_carry(signal, power_bit_array):
@@ -182,8 +182,7 @@ def prptest(exponent, siglen, bit_array, power_bit_array,
   print_i_count = print_iter = config.getint("TensorPrime", "PrintIter")
   if s is None:
     s = jnp.zeros(siglen).at[0].set(3)
-    i = start_pos
-
+  i = start_pos
   current_time = start = time.perf_counter_ns()
   while i < exponent:
       # Create a save checkpoint every save_i_count
@@ -193,7 +192,7 @@ def prptest(exponent, siglen, bit_array, power_bit_array,
         f"Saving progress (performed every {save_iter} iterations)...")
       saveload.save(exponent, siglen, s, i)
       save_i_count = save_iter
-      save_i_count -= 1
+    save_i_count -= 1
 
         # Print a progress update every print_i_count
         # iterations
@@ -204,7 +203,7 @@ def prptest(exponent, siglen, bit_array, power_bit_array,
       logging.info(
         f"Time elapsed at iteration {i}: {timedelta(microseconds=(current_time - start) // 1000)}, {(delta_time / 1000) / print_iter:.2f} µs/iter")
       print_i_count = print_iter
-      print_i_count -= 1
+    print_i_count -= 1
       
     # Gerbicz error checking
     if GEC_enabled:
@@ -239,27 +238,27 @@ def prptest(exponent, siglen, bit_array, power_bit_array,
           update_gec_save(i, s, d)
 
       # Running squaremod
-      s, roundoff = squaremod_with_ibdwt(
-        s, exponent, siglen, power_bit_array, weight_array)
+    s, roundoff = squaremod_with_ibdwt(
+      s, exponent, siglen, power_bit_array, weight_array)
 
-        # Quick check to avoid roundoff errors. If a
-        # roundoff error is encountered we have no
-        # current method for dealing with it, so throw
-        # an exception and terminate the program.
-      if roundoff > 0.40625:
-        logging.warning(f"Roundoff (iteration {i}): {roundoff}")
-        if roundoff > 0.4375:
-          msg = f"Roundoff error exceeded threshold (iteration {i}): {roundoff} vs 0.4375"
-          raise Exception(msg)
+    # Quick check to avoid roundoff errors. If a
+    # roundoff error is encountered we have no
+    # current method for dealing with it, so throw
+    # an exception and terminate the program.
+    if roundoff > 0.40625:
+      logging.warning(f"Roundoff (iteration {i}): {roundoff}")
+      if roundoff > 0.4375:
+        msg = f"Roundoff error exceeded threshold (iteration {i}): {roundoff} vs 0.4375"
+        raise Exception(msg)
           
     i += 1
 
-    # The "partial carry" may leave some values in
-    # an incorrect state. Running a final carry
-    # will clean this up to produce the residue we
-    # want to check.
-    carry_val, s = firstcarry(s, power_bit_array)
-    return secondcarry(carry_val, s, power_bit_array)
+  # The "partial carry" may leave some values in
+  # an incorrect state. Running a final carry
+  # will clean this up to produce the residue we
+  # want to check.
+  carry_val, s = firstcarry(s, power_bit_array)
+  return secondcarry(carry_val, s, power_bit_array)
 
 
 # Sum up the values in the signal until the total
@@ -289,8 +288,8 @@ def find_closest(x, xs):
       min_dist = dist
     else:
       return xs[i-1]
-exponent = 1232312353
-siglen= 4
+exponent = 17
+siglen= 8
 check = True
 while check:
   try:
@@ -299,7 +298,9 @@ while check:
     t1 = time.time()
     s = prptest(exponent, siglen, bit_array, power_bit_array, weight_array)
     t2 = time.time()
-    print(s)
+    n = (1<<exponent) - 1
+    print(result_is_nine(s, power_bit_array, n))
+    print("Success!:", s)
     check = False
   except Exception as e:
     print(e)
