@@ -42,14 +42,14 @@ def update_gec_save(i, s, d):
   gec_d_saved = d.copy()  
   
 def mk_bit_array(exponent, signal_length):
-  indices = jnp.arange(1, signal_length+1)
+  indices = jnp.arange(1, signal_length+1, dtype=jnp_precision)
   return jnp.ceil((exponent * indices) / signal_length) - jnp.ceil(exponent * (indices - 1) / signal_length)
 
 def mk_power_bit_array(bit_array):
   return jnp.power(2, bit_array)
 
 def mk_weight_array(exponent, signal_length):
-  indices = jnp.arange(0, signal_length)
+  indices = jnp.arange(0, signal_length, dtype=jnp_precision)
   return jnp.power(2, (jnp.ceil(exponent * indices /signal_length) - (exponent * indices / signal_length)))
 
 def initialize_constants(exponent, signal_length):
