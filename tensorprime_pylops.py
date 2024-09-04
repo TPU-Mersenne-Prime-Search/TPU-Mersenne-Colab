@@ -207,92 +207,92 @@ def multmod_with_ibdwt(signal1, signal2, prime_exponent,
 
 def prptest(exponent, siglen, bit_array, power_bit_array,
             weight_array, start_pos=0, s=None, d=None, prev_d=None):
-    # Load settings values for this function
-    GEC_enabled = config.getboolean("TensorPrime", "GECEnabled")
-    GEC_iterations = config.getint("TensorPrime", "GECIter")    
-    # Uses counters to avoid modulo check
-    save_i_count = save_iter = config.getint("TensorPrime", "SaveIter")
-    print_i_count = print_iter = config.getint("TensorPrime", "PrintIter")
-    if s is None:
-        s = jnp.zeros(siglen).at[0].set(3)
-    i = start_pos
+  # Load settings values for this function
+  GEC_enabled = config.getboolean("TensorPrime", "GECEnabled")
+  GEC_iterations = config.getint("TensorPrime", "GECIter")
 
-    current_time = start = time.perf_counter_ns()
-    while i < exponent:
-        # Create a save checkpoint every save_i_count
-        # iterations.
-        if not save_i_count:
-            logging.info(
-                f"Saving progress (performed every {save_iter} iterations)...")
-            saveload.save(exponent, siglen, s, i)
-            save_i_count = save_iter
-        save_i_count -= 1
+  # Uses counters to avoid modulo check
+  save_i_count = save_iter = config.getint("TensorPrime", "SaveIter")
+  print_i_count = print_iter = config.getint("TensorPrime", "PrintIter")
+  if s is None:
+    s = jnp.zeros(siglen).at[0].set(3)
+  i = start_pos
+  current_time = start = time.perf_counter_ns()
+  while i < exponent:
+      # Create a save checkpoint every save_i_count
+      # iterations.
+    if not save_i_count:
+      logging.info(
+        f"Saving progress (performed every {save_iter} iterations)...")
+      saveload.save(exponent, siglen, s, i)
+      save_i_count = save_iter
+    save_i_count -= 1
 
         # Print a progress update every print_i_count
         # iterations
-        if not print_i_count:
-            temp = time.perf_counter_ns()
-            delta_time = temp - current_time
-            current_time = temp
-            logging.info(
-                f"Time elapsed at iteration {i}: {timedelta(microseconds=(current_time - start) // 1000)}, {(delta_time / 1000) / print_iter:.2f} µs/iter")
-            print_i_count = print_iter
-        print_i_count -= 1
+    if not print_i_count:
+      temp = time.perf_counter_ns()
+      delta_time = temp - current_time
+      current_time = temp
+      logging.info(
+        f"Time elapsed at iteration {i}: {timedelta(microseconds=(current_time - start) // 1000)}, {(delta_time / 1000) / print_iter:.2f} µs/iter")
+      print_i_count = print_iter
+    print_i_count -= 1
+      
+    # Gerbicz error checking
+    if GEC_enabled:
+      L = math.isqrt(GEC_iterations)
+      L_2 = L * L
+      three_signal = jnp.zeros(siglen).at[0].set(3)
+      if d is None:
+        prev_d = d = three_signal
+        update_gec_save(i, s, d)
 
-        # Gerbicz error checking
-        if GEC_enabled:
-            L = math.isqrt(GEC_iterations)
-            L_2 = L * L
-            three_signal = jnp.zeros(siglen).at[0].set(3)
-            if d is None:
-                prev_d = d = three_signal
-                update_gec_save(i, s, d)
-
-            # Every L iterations, update d and prev_d
-            if i and not i % L:
-                prev_d = d
-                d, roundoff = multmod_with_ibdwt(
-                    d, s, exponent, siglen, power_bit_array, weight_array)
-            # Every L^2 iterations, check the current d value with and independently calculated d
-            if i and (not i % L_2 or (
-                    not i % L and i + L > exponent)):
-                prev_d_pow_signal = prev_d
-                for _j in range(L):
-                    prev_d_pow_signal, roundoff = squaremod_with_ibdwt(prev_d_pow_signal, exponent, siglen,
-                                                                       power_bit_array, weight_array)
-                check_value, roundoff = multmod_with_ibdwt(three_signal, prev_d_pow_signal, exponent, siglen,
+      # Every L iterations, update d and prev_d
+      if i and not i % L:
+        prev_d = d
+        d, roundoff = multmod_with_ibdwt(
+          d, s, exponent, siglen, power_bit_array, weight_array)
+      # Every L^2 iterations, check the current d value with and independently calculated d
+      if i and (not i % L_2 or (
+          not i % L and i + L > exponent)):
+        prev_d_pow_signal = prev_d
+        for _j in range(L):
+          prev_d_pow_signal, roundoff = squaremod_with_ibdwt(prev_d_pow_signal, exponent, siglen,
                                                            power_bit_array, weight_array)
+        check_value, roundoff = multmod_with_ibdwt(three_signal, prev_d_pow_signal, exponent, siglen,
+                                                   power_bit_array, weight_array)
 
-                if not jnp.array_equal(d, check_value):
-                    logging.error("error occurred. rolling back to last save.")
-                    i, s, d = rollback()
+        if not jnp.array_equal(d, check_value):
+          logging.error("error occurred. rolling back to last save.")
+          i, s, d = rollback()
 
-                else:
-                    logging.info("updating gec_save")
-                    update_gec_save(i, s, d)
+        else:
+          logging.info("updating gec_save")
+          update_gec_save(i, s, d)
 
-        # Running squaremod
-        s, roundoff = squaremod_with_ibdwt(
-            s, exponent, siglen, power_bit_array, weight_array)
+      # Running squaremod
+    s, roundoff = squaremod_with_ibdwt(
+      s, exponent, siglen, power_bit_array, weight_array)
 
-        # Quick check to avoid roundoff errors. If a
-        # roundoff error is encountered we have no
-        # current method for dealing with it, so throw
-        # an exception and terminate the program.
-        if roundoff > 0.40625:
-            logging.warning(f"Roundoff (iteration {i}): {roundoff}")
-            if roundoff > 0.4375:
-                msg = f"Roundoff error exceeded threshold (iteration {i}): {roundoff} vs 0.4375"
-                raise Exception(msg)
+    # Quick check to avoid roundoff errors. If a
+    # roundoff error is encountered we have no
+    # current method for dealing with it, so throw
+    # an exception and terminate the program.
+    if roundoff > 0.40625:
+      logging.warning(f"Roundoff (iteration {i}): {roundoff}")
+      if roundoff > 0.4375:
+        msg = f"Roundoff error exceeded threshold (iteration {i}): {roundoff} vs 0.4375"
+        raise Exception(msg)
+          
+    i += 1
 
-        i += 1
-
-    # The "partial carry" may leave some values in
-    # an incorrect state. Running a final carry
-    # will clean this up to produce the residue we
-    # want to check.
-    carry_val, s = firstcarry(s, power_bit_array)
-    return secondcarry(carry_val, s, power_bit_array)
+  # The "partial carry" may leave some values in
+  # an incorrect state. Running a final carry
+  # will clean this up to produce the residue we
+  # want to check.
+  carry_val, s = firstcarry(s, power_bit_array)
+  return secondcarry(carry_val, s, power_bit_array)
 
 
 # Sum up the values in the signal until the total
