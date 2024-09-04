@@ -76,7 +76,6 @@ def secondcarry(carryval, signal, power_bit_array):
     carryval = jnp.floor_divide(val, power_bit)
     return carryval, jnp.mod(val, power_bit)
   carryval, vals = lax.scan(body, carryval, (signal, power_bit_array))
-  print(carryval)
   return vals
 
 def partial_carry(signal, power_bit_array):
@@ -288,8 +287,8 @@ def find_closest(x, xs):
       min_dist = dist
     else:
       return xs[i-1]
-exponent = 17
-siglen= 8
+exponent = 4423
+siglen= max(1,int(jnp.log2(exponent/2.5)))
 check = True
 while check:
   try:
