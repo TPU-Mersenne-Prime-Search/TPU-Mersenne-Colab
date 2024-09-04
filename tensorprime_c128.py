@@ -274,36 +274,34 @@ def result_is_nine(signal, power_bit_array, n):
     base += int(power_bit_array[i])
     i += 1
   return res == nine and not signal[i:].any()
-
-def given_N_get_max_p(N, float_type=64):
-  if float_type == 32:
-    Bmant = 24
-  if float_type == 64:
-    Bmant= 53
-  AsympConst = 0.6
-  ln2inv = 1.0/jnp.log(2.0)
-  ln_N     = jnp.log(1.0*N)
-  lnln_N   = jnp.log(ln_N)
-  l2_N     = ln2inv*ln_N
-  lnl2_N   = jnp.log(l2_N)
-  l2l2_N   = ln2inv*lnl2_N
-  lnlnln_N = jnp.log(lnln_N)
-  l2lnln_N = ln2inv*lnlnln_N
-    
-  Wbits = 0.5*( Bmant - AsympConst - 0.5*(l2_N + l2l2_N) - 1.5*(l2lnln_N) )
-  maxExp2 = Wbits*N
-  return maxExp2
-
+import os 
+os.environ["XLA_FLAGS"] = '--xla_gpu_cuda_data_dir=/home/I/.guix-profile/bin/ --xla_force_host_platform_device_count=8'
 primes = [2, 3, 5, 7, 13, 17, 19, 31, 61, 89, 107, 127, 521, 607, 1279, 2203, 2281, 3217, 4253, 4423, 9689, 9941, 11213, 19937, 21701, 23209, 44497, 86243, 110503, 132049, 216091,
                        756839, 859433, 1257787, 1398269, 2976221, 3021377, 6972593, 13466917, 20996011, 24036583, 25964951, 30402457, 32582657, 37156667, 42643801, 43112609, 57885161, 74207281, 77232917, 82589933]
 
 exponent = primes[19]
-siglen= 8*43
-bit_array, power_bit_array, weight_array = initialize_constants(
-  exponent, siglen)
-dft = DFT(siglen, inverse=False)
-idft = DFT(siglen, inverse=True)
-s = prptest(exponent, siglen, bit_array, power_bit_array, weight_array)
-n = (1<<exponent) - 1
-print(result_is_nine(s, power_bit_array, n))
 
+
+def multiple_of_n_smaller_than(n,smaller_than):
+  multiples = []
+  i = 1
+  multiple = i * n
+  while(multiple<smaller_than):
+    multiples.append(multiple)
+    i += 1
+    multiple = i* n
+  return multiples
+siglens =  multiple_of_n_smaller_than(len(jax.devices()), exponent)
+for siglen in siglens:
+  try:
+    print("Trying ", siglen)
+    bit_array, power_bit_array, weight_array = initialize_constants(
+      exponent, siglen)
+    dft = DFT(siglen, inverse=False)
+    idft = DFT(siglen, inverse=True)
+    s = prptest(exponent, siglen, bit_array, power_bit_array, weight_array)
+    n = (1<<exponent) - 1
+    print(result_is_nine(s, power_bit_array, n))
+    break
+  except:
+    continue

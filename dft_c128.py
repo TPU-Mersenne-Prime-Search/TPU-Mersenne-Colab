@@ -128,8 +128,7 @@ class DFT:
       delta_vec = jnp.einsum(
         'ij,j->i',
         self.real_shards[v.x_index][y_index],
-        vec,
-        precision=lax.Precision.HIGHEST)
+        vec)
       accum_vec = v.accum_vec + delta_vec
       i = v.i+1
       return LoopVars(i, x_index, y_index, vec, accum_vec)
@@ -140,8 +139,8 @@ class DFT:
     accum_vec = jnp.einsum(
         'ij,j->i',
         self.real_shards[x_index][y_index],
-        vec,
-        precision=lax.Precision.HIGHEST)
+        vec)
+
     
     _, __, ___, ____, res_vec = lax.while_loop(
       cond,
@@ -170,13 +169,14 @@ class DFT:
       delta_vec = jnp.einsum(
         'ij,j->i',
         self.imag_shards[v.x_index][y_index],
-        vec,
-        precision=lax.Precision.HIGHEST)
+        vec)
       accum_vec = v.accum_vec + delta_vec
       i = v.i+1
       return LoopVars(i, x_index, y_index, vec, accum_vec)
     
     i=1
+
+
     x_index = lax.axis_index("axis")
     y_index = lax.axis_index("axis")
     accum_vec = jnp.einsum(
