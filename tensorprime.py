@@ -1,5 +1,5 @@
 import jax
-#jax.config.update("jax_enable_x64", True)
+jax.config.update("jax_enable_x64", True)
 import jax.numpy as jnp
 from jax import lax, jit
 from functools import partial
@@ -11,7 +11,7 @@ import math
 from config import config
 from log_helper import init_logger
 
-jnp_precision = jnp.float32
+jnp_precision = jnp.float64
 
 def is_known_mersenne_prime(p):
   """Returns True if the given Mersenne prime is known, and False otherwise."""
@@ -278,19 +278,10 @@ primes = [2, 3, 5, 7, 13, 17, 19, 31, 61, 89, 107, 127, 521, 607, 1279, 2203, 22
 
 exponent = primes[19]
 siglen= max(1,int(jnp.log2(exponent/2.5)))
-check = True
-while check:
-  try:
-    bit_array, power_bit_array, weight_array = initialize_constants(
-      exponent, siglen)
-    t1 = time.time()
-    s = prptest(exponent, siglen, bit_array, power_bit_array, weight_array)
-    t2 = time.time()
-    n = (1<<exponent) - 1
-    print(result_is_nine(s, power_bit_array, n))
-    print("Success!:", s)
-    check = False
-  except Exception as e:
-    print(e)
-    print("Tried ", siglen, " but ran into round off errors. Incrementing...")
-    siglen *= 2
+bit_array, power_bit_array, weight_array = initialize_constants(
+  exponent, siglen)
+t1 = time.time()
+s = prptest(exponent, siglen, bit_array, power_bit_array, weight_array)
+t2 = time.time()
+n = (1<<exponent) - 1
+print(result_is_nine(s, power_bit_array, n))
