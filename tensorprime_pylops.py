@@ -383,20 +383,12 @@ def find_closest(x, xs):
     else:
       return xs[i-1]
 exponent = primes[15]
-siglen= 8
-check = True
-while check:
-  try:
-    bit_array, power_bit_array, weight_array = initialize_constants(
-      exponent, siglen)
-    t1 = time.time()
-    fft_op = pylops.signalprocessing.FFT(dims=(siglen,), engine='numpy')
-    ifft_op = fft_op.H
-    s = prptest(exponent, siglen, bit_array, power_bit_array, weight_array)
-    t2 = time.time()
-    print("Success!")
-    check = False
-  except Exception as e:
-    print(e)
-    print("Tried ", siglen, " but ran into round off errors. Incrementing...")
-    siglen *= 2
+siglen= max(1,int(jnp.log2(exponent/2.5)))
+
+bit_array, power_bit_array, weight_array = initialize_constants(
+  exponent, siglen)
+t1 = time.time()
+fft_op = pylops.signalprocessing.FFT(dims=(siglen,), engine='numpy')
+ifft_op = fft_op.H
+s = prptest(exponent, siglen, bit_array, power_bit_array, weight_array)
+t2 = time.time()
