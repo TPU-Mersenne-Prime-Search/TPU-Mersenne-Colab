@@ -76,6 +76,7 @@ def secondcarry(carryval, signal, power_bit_array):
     carryval = jnp.floor_divide(val, power_bit)
     return carryval, jnp.mod(val, power_bit)
   carryval, vals = lax.scan(body, carryval, (signal, power_bit_array))
+  print("This should be zero: ", carryval)
   return vals
 
 def partial_carry(signal, power_bit_array):
@@ -295,7 +296,7 @@ def given_N_get_max_p(N, float_type=64):
   maxExp2 = Wbits*N
   return maxExp2
 
-exponent = primes[4]
+exponent = primes[13]
 os.environ["XLA_FLAGS"] = '--xla_gpu_cuda_data_dir=/home/I/.guix-profile/bin/ --xla_force_host_platform_device_count=8'
 def multiple_of_n_smaller_than(n,smaller_than):
   multiples = []
