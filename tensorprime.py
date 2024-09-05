@@ -12,7 +12,7 @@ from config import config
 from log_helper import init_logger
 import os
 jnp_precision = jnp.float64
-
+precision= "64"
 def is_known_mersenne_prime(p):
   """Returns True if the given Mersenne prime is known, and False otherwise."""
   primes = frozenset([2, 3, 5, 7, 13, 17, 19, 31, 61, 89, 107, 127, 521, 607, 1279, 2203, 2281, 3217, 4253, 4423, 9689, 9941, 11213, 19937, 21701, 23209, 44497, 86243, 110503, 132049, 216091,
@@ -76,7 +76,6 @@ def secondcarry(carryval, signal, power_bit_array):
     carryval = jnp.floor_divide(val, power_bit)
     return carryval, jnp.mod(val, power_bit)
   carryval, vals = lax.scan(body, carryval, (signal, power_bit_array))
-  print("This should be zero: ", carryval)
   return vals
 
 def partial_carry(signal, power_bit_array):
@@ -219,7 +218,7 @@ def prptest(exponent, siglen, bit_array, power_bit_array,
         prev_d = d
         d, roundoff = multmod_with_ibdwt(
           d, s, exponent, siglen, power_bit_array, weight_array)
-      # Every L^2 iterations, check the current d value with and independently calculated d
+      # Every L^2 iterations, check the current d value with an independently calculated d
       if i and (not i % L_2 or (
           not i % L and i + L > exponent)):
         prev_d_pow_signal = prev_d
@@ -296,7 +295,7 @@ def given_N_get_max_p(N, float_type=64):
   maxExp2 = Wbits*N
   return maxExp2
 
-exponent = primes[13]
+exponent = primes[21]
 os.environ["XLA_FLAGS"] = '--xla_gpu_cuda_data_dir=/home/I/.guix-profile/bin/ --xla_force_host_platform_device_count=8'
 def multiple_of_n_smaller_than(n,smaller_than):
   multiples = []
@@ -308,17 +307,10 @@ def multiple_of_n_smaller_than(n,smaller_than):
     multiple = i* n
   return multiples
 
-siglens =  multiple_of_n_smaller_than(len(jax.devices()), exponent)
+siglen = 1 << max(1, int(math.log2(exponent / (10 if precision=="64" else 2.5))))
 
-for siglen in siglens:
-  try:
-    print("Trying ", siglen)
-    bit_array, power_bit_array, weight_array = initialize_constants(
-      exponent, siglen)
-    s = prptest(exponent, siglen, bit_array, power_bit_array, weight_array)
-    n = (1<<exponent) - 1
-    print(result_is_nine(s, power_bit_array, n))
-    break
-  except Exception as e:
-    print(e)
-    continue
+bit_array, power_bit_array, weight_array = initialize_constants(
+  exponent, siglen)
+s = prptest(exponent, siglen, bit_array, power_bit_array, weight_array)
+n = (1<<exponent) - 1
+print(result_is_nine(s, power_bit_array, n))
