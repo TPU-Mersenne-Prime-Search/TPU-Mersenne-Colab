@@ -358,11 +358,8 @@ def given_N_get_max_p(N, float_type=64):
   maxExp2 = Wbits*N
   return maxExp2
 
-exponent = 123123
-
-siglen = 2**2
 float_type = 32
-
+precision = "32"
 #while (max_p < p):
 #  min_N += 1
 #  max_p = given_N_get_max_p(min_N, float_type)
@@ -374,21 +371,31 @@ float_type = 32
 primes = [2, 3, 5, 7, 13, 17, 19, 31, 61, 89, 107, 127, 521, 607, 1279, 2203, 2281, 3217, 4253, 4423, 9689, 9941, 11213, 19937, 21701, 23209, 44497, 86243, 110503, 132049, 216091,
                        756839, 859433, 1257787, 1398269, 2976221, 3021377, 6972593, 13466917, 20996011, 24036583, 25964951, 30402457, 32582657, 37156667, 42643801, 43112609, 57885161, 74207281, 77232917, 82589933]
 
-def find_closest(x, xs):
-  min_dist = 100000000000
-  for i,x_ in enumerate(xs):
-    dist = abs(x_ - x)
-    if dist <= min_dist:
-      min_dist = dist
-    else:
-      return xs[i-1]
-exponent = primes[15]
-siglen= max(1,int(jnp.log2(exponent/2.5)))
+exponent = primes[19]
+os.environ["XLA_FLAGS"] = '--xla_gpu_cuda_data_dir=/home/I/.guix-profile/bin/ --xla_force_host_platform_device_count=8'
+def multiple_of_n_smaller_than(n,smaller_than):
+  multiples = []
+  i = 1
+  multiple = i * n
+  while(multiple<smaller_than):
+    multiples.append(multiple)
+    i += 1
+    multiple = i* n
+  return multiples
+
+
+siglen = 1 << max(1, int(math.log2(exponent / (10 if precision=="64" else 2.5))))
+fft_op = pylops.JaxOperator(pylops.signalprocessing.FFT(
+        engine="scipy",
+        dims=(siglen,),
+        real=True,
+        norm="none",
+        dtype=jnp.float32))
+
+ifft_op = fft_op.H
 
 bit_array, power_bit_array, weight_array = initialize_constants(
   exponent, siglen)
-t1 = time.time()
-fft_op = pylops.signalprocessing.FFT(dims=(siglen,), engine='numpy')
-ifft_op = fft_op.H
 s = prptest(exponent, siglen, bit_array, power_bit_array, weight_array)
-t2 = time.time()
+n = (1<<exponent) - 1
+print(result_is_nine(s, power_bit_array, n))
