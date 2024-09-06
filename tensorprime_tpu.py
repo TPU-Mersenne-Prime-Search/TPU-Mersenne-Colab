@@ -289,28 +289,8 @@ def result_is_nine(signal, power_bit_array, n):
   
 
 ########################################
-def mk_data(min_p, max_p):
-  exps = []
-  times = []
-  for i in range(min_p, max_p):
-    print("Trying ", i, "...")
-    try:
-      p=i
-      siglen = 1 << max(1, int(jnp.log2(p / 10)))
-      bit_array, power_bit_array, weight_array = initialize_constants(
-        p, siglen)
-      t1 = time.time()
-      s = prptest(p, siglen, bit_array, power_bit_array, weight_array)
-      t2 = time.time()
-      exps.append(p)
-      times.append(t2-t1)
-      print("It worked!")
-    except Exception as e:
-      print(e)
-  return exps, times
 
-
-os.environ["XLA_FLAGS"] = '--xla_force_host_platform_device_count=2'
+os.environ["XLA_FLAGS"] = '--xla_force_host_platform_device_count=2048'
 n_devices = len(jax.devices())
 transformer = DistFFT(["x","y","z"], [1,1, n_devices])
 
@@ -319,15 +299,17 @@ precision = "32"
 primes = [2, 3, 5, 7, 13, 17, 19, 31, 61, 89, 107, 127, 521, 607, 1279, 2203, 2281, 3217, 4253, 4423, 9689, 9941, 11213, 19937, 21701, 23209, 44497, 86243, 110503, 132049, 216091,
                        756839, 859433, 1257787, 1398269, 2976221, 3021377, 6972593, 13466917, 20996011, 24036583, 25964951, 30402457, 32582657, 37156667, 42643801, 43112609, 57885161, 74207281, 77232917, 82589933]
 
-exponent = primes[5]
+exponent = primes[20]
 
 os.environ["XLA_FLAGS"] = '--xla_gpu_cuda_data_dir=/home/I/.guix-profile/bin/ --xla_force_host_platform_device_count=8'
 
 
 siglen = 1 << max(1, int(math.log2(exponent / (10 if precision=="64" else 2.5))))
 
+print("running on exponent ", exponent)
 bit_array, power_bit_array, weight_array = initialize_constants(
   exponent, siglen)
 s = prptest(exponent, siglen, bit_array, power_bit_array, weight_array)
 n = (1<<exponent) - 1
 print(result_is_nine(s, power_bit_array, n))
+  

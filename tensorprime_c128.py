@@ -1,5 +1,5 @@
 import jax
-jax.config.update("jax_enable_x64", True)
+#jax.config.update("jax_enable_x64", True)
 import jax.numpy as jnp
 from jax import lax, jit
 from functools import partial
@@ -11,7 +11,7 @@ import math
 from config import config
 from log_helper import init_logger
 from dft_c128 import DFT
-jnp_precision = jnp.float64
+jnp_precision = jnp.float32
 
 def is_known_mersenne_prime(p):
   """Returns True if the given Mersenne prime is known, and False otherwise."""
@@ -220,7 +220,7 @@ def prptest(exponent, siglen, bit_array, power_bit_array,
         prev_d = d
         d, roundoff = multmod_with_ibdwt(
           d, s, exponent, siglen, power_bit_array, weight_array)
-      # Every L^2 iterations, check the current d value with and independently calculated d
+      # Every L^2 iterations, check the current d value with an independently calculated d
       if i and (not i % L_2 or (
           not i % L and i + L > exponent)):
         prev_d_pow_signal = prev_d
@@ -278,30 +278,15 @@ import os
 os.environ["XLA_FLAGS"] = '--xla_gpu_cuda_data_dir=/home/I/.guix-profile/bin/ --xla_force_host_platform_device_count=8'
 primes = [2, 3, 5, 7, 13, 17, 19, 31, 61, 89, 107, 127, 521, 607, 1279, 2203, 2281, 3217, 4253, 4423, 9689, 9941, 11213, 19937, 21701, 23209, 44497, 86243, 110503, 132049, 216091,
                        756839, 859433, 1257787, 1398269, 2976221, 3021377, 6972593, 13466917, 20996011, 24036583, 25964951, 30402457, 32582657, 37156667, 42643801, 43112609, 57885161, 74207281, 77232917, 82589933]
-
+precision="32"
 exponent = primes[19]
 
 
-def multiple_of_n_smaller_than(n,smaller_than):
-  multiples = []
-  i = 1
-  multiple = i * n
-  while(multiple<smaller_than):
-    multiples.append(multiple)
-    i += 1
-    multiple = i* n
-  return multiples
-siglens =  multiple_of_n_smaller_than(len(jax.devices()), exponent)
-for siglen in siglens:
-  try:
-    print("Trying ", siglen)
-    bit_array, power_bit_array, weight_array = initialize_constants(
-      exponent, siglen)
-    dft = DFT(siglen, inverse=False)
-    idft = DFT(siglen, inverse=True)
-    s = prptest(exponent, siglen, bit_array, power_bit_array, weight_array)
-    n = (1<<exponent) - 1
-    print(result_is_nine(s, power_bit_array, n))
-    break
-  except:
-    continue
+siglen = 1 << max(1, int(math.log2(exponent / (10 if precision=="64" else 2.5))))
+dft = DFT(siglen)
+idft = DFT(siglen, inverse=True)
+bit_array, power_bit_array, weight_array = initialize_constants(
+  exponent, siglen)
+s = prptest(exponent, siglen, bit_array, power_bit_array, weight_array)
+n = (1<<exponent) - 1
+print(result_is_nine(s, power_bit_array, n))
